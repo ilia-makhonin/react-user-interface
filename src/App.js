@@ -1,91 +1,72 @@
 import React, { Component } from 'react';
 import './App.css';
 
-import Header from './components/Header';
-import Settings from './components/Settings';
-import Filter from './components/Filter';
-import Image from './components/Image';
-import FilterList from './components/FilterList';
+import WeatherIcon from './components/WeatherIcon';
+import WeatherDetails from './components/WeatherDetails';
 
 
 class App extends Component {
     state = {
-        image: 'https://static.pexels.com/photos/39811/pexels-photo-39811.jpeg',
-        selectedFilter: '',
-        settings: {
-            contrast: 100,
-            hue: 0,
-            brightness: 100,
-            saturate: 100,
-            sepia: 0
-        }
+        icon: '',
+        time: '',
+        city: '',
+        temperature: '',
+        weatherCode: '',
+        fetching: true
     };
 
-    handleChange = event => {
-        const setting = event.target.id;
-        const value = event.target.value;
-        const settings = { ...this.state.settings, [setting]: value };
+    componentDidMount() {
+        this.fetchIP();
+    }
 
-        this.setState({ selectedFilter: '', settings });
+      fetchWeatherData = cityName => {
+        let city = cityName || 'Пушкино';
+        const baseUrl = `http://api.openweathermap.org`;
+        const path = `/data/2.5/weather`;
+        const appId = `3a9fc4efa2caef4392280fa1df305b24`;
+        const query = `units=metric&lang=ru&appid=${appId}`;
+
+        fetch(`${baseUrl}${path}?q=${city}&${query}`)
+            .then( response => response.json())
+            .then( data => {
+                const  date = new Date();
+                const time = date.getHours();
+
+                this.setState({
+                    time,
+                    city,
+                    temperature: Math.round(data.main.temp),
+                    weatherCode: data.weather[0].id,
+                    fetching: false
+                });
+            })
+            .catch( error => console.log(error));
     };
 
-    updateSettings = (selectedFilter, settings) => {
-        this.setState({ selectedFilter, settings });
+    fetchIP = () => {
+        fetch('//freegeoip.net/json/')
+            .then( response => response.json())
+            .then(({ city }) => this.fetchWeatherData(city))
+            .catch( error => console.log(error));
     };
 
-    imageChange = () => {
-        let url = document.querySelector('#download-input');
-        const image = url.value;
+     render() {
+         const { fetching, icon, time, city, temperature, weatherCode } = this.state;
 
-        if (image !== '') {
-            url.value = '';
-
-            this.setState({ image });
-        }
-    };
-
-    defaultSettings = () => {
-        const settings = {
-            contrast: 100,
-            hue: 0,
-            brightness: 100,
-            saturate: 100,
-            sepia: 0
-        };
-
-        this.setState({ selectedFilter: '', settings });
-    };
-
-    render() {
-        const { image, selectedFilter, settings } = this.state;
-
-        return (
-            <div className="app">
-                <Header title="Reactagram" />
-
-                <section className="content">
-                    <Settings
-                        settings={settings}
-                        handleChange={this.handleChange}
-                        imageChange={this.imageChange}
-                        defaultSettings={this.defaultSettings}
-                    />
-
-                    <main className="main">
-                        <Filter settings={settings}>
-                            <Image src={image} />
-                        </Filter>
-
-                        <FilterList
-                            image={image}
-                            settings={settings}
-                            selectedFilter={selectedFilter}
-                            updateSettings={this.updateSettings}
-                        />
-                    </main>
-                </section>
-            </div>
-        );
+         return fetching ?
+             <div className="app">Загрузка</div>
+             :
+             <div className="app" data-hour={time}>
+                 <WeatherIcon
+                     icon={icon}
+                     time={time}
+                     weatherCode={weatherCode}
+                 />
+             <WeatherDetails
+                 city={city}
+                 temperature={temperature}
+             />
+         </div>;
     }
 }
 
